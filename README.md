@@ -3,7 +3,7 @@ ChronoDB-A Database Management System
 ChronoDB is a custom C++ DBMS implementing a multi-module architecture:
 
 - **Storage Engine**: CRUD, tables, persistence, undo/redo operations
-- **Query Engine**: ChronaQL parser with lexer → AST → executor
+- **Query Engine**: ChronaQL parser with lexer -> AST -> executor
 - **Indexing Engine**: BST/AVL/B-Tree for fast lookups
 - **Graph Engine**: DFS, BFS, Dijkstra, optional A* with CLI visualization
 - **Transactions Module**: BEGIN, COMMIT, ROLLBACK, locking mechanism
