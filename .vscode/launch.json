@@ -8,8 +8,8 @@
       "args": [],
       "stopAtEntry": false,
       "externalConsole": true,
-      "cwd": ".",
-      "program": "build/Debug/outDebug",
+      "cwd": "c:/Users/asada/OneDrive/Desktop/Desktop/3rd semester/DSA/project/ChronoDB/src",
+      "program": "c:/Users/asada/OneDrive/Desktop/Desktop/3rd semester/DSA/project/ChronoDB/src/build/Debug/outDebug",
       "MIMode": "gdb",
       "miDebuggerPath": "gdb",
       "setupCommands": [
