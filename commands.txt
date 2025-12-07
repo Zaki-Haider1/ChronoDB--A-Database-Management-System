@@ -1,0 +1,151 @@
+========================================
+   ChronoDB SQL Command Reference
+========================================
+
+=== BASIC OPERATIONS ===
+
+1. CREATE TABLE
+   Syntax: CREATE TABLE <table_name> (<field1> <type>, <field2> <type>, ...);
+   Example: CREATE TABLE students (id INT, name STRING, gpa FLOAT);
+   
+2. INSERT
+   Syntax: INSERT INTO <table_name> VALUES <id> <name> <gpa>;
+   Example: INSERT INTO students VALUES 1 Alice 3.8;
+   Example: INSERT INTO students VALUES 2 Bob 3.5;
+
+3. SELECT
+   Syntax: SELECT * FROM <table_name>;
+   Example: SELECT * FROM students;
+   Note: Shows all records in formatted table
+
+4. UPDATE
+   Syntax: UPDATE <table_name> SET <field> <value> WHERE ID <id>;
+   Example: UPDATE students SET gpa 4.0 WHERE ID 1;
+   Example: UPDATE students SET name Charlie WHERE ID 2;
+   Valid Fields: NAME, GPA
+
+5. DELETE
+   Syntax: DELETE FROM <table_name> WHERE ID <id>;
+   Example: DELETE FROM students WHERE ID 2;
+   Note: Removes record by ID
+
+6. UNDO
+   Syntax: UNDO;
+   Example: UNDO;
+   Note: Reverts the last operation (CREATE, INSERT, UPDATE, DELETE)
+
+7. REDO
+   Syntax: REDO;
+   Example: REDO;
+   Note: Re-applies the last undone operation
+
+8. EXIT
+   Syntax: EXIT; (or exit; - case insensitive)
+   Example: exit;
+   Note: Closes the ChronoDB CLI
+
+========================================
+
+=== GRAPH OPERATIONS ===
+
+1. CREATE GRAPH
+   Syntax: GRAPH CREATE <graph_name>;
+   Example: GRAPH CREATE myGraph;
+   Note: Creates a new graph structure
+
+2. DELETE GRAPH
+   Syntax: GRAPH DELETE <graph_name>;
+   Example: GRAPH DELETE myGraph;
+   Note: Removes a graph
+
+3. ADD VERTEX
+   Syntax: GRAPH ADDVERTEX <graph_name> <vertex_name>;
+   Example: GRAPH ADDVERTEX myGraph A;
+   Example: GRAPH ADDVERTEX myGraph B;
+   Note: Adds a node to the graph
+
+4. REMOVE VERTEX
+   Syntax: GRAPH REMOVEVERTEX <graph_name> <vertex_name>;
+   Example: GRAPH REMOVEVERTEX myGraph A;
+   Note: Removes a node from the graph
+
+5. ADD EDGE
+   Syntax: GRAPH ADDEDGE <graph_name> <vertex1> <vertex2> <weight>;
+   Example: GRAPH ADDEDGE myGraph A B 5;
+   Example: GRAPH ADDEDGE myGraph B C 10;
+   Note: Creates connection between two vertices with weight
+
+6. PRINT GRAPH
+   Syntax: GRAPH PRINT <graph_name>;
+   Example: GRAPH PRINT myGraph;
+   Note: Displays the entire graph structure
+
+7. BREADTH-FIRST SEARCH
+   Syntax: GRAPH BFS <graph_name> <start_vertex>;
+   Example: GRAPH BFS myGraph A;
+   Note: Traverses graph level by level from start vertex
+
+8. DEPTH-FIRST SEARCH
+   Syntax: GRAPH DFS <graph_name> <start_vertex>;
+   Example: GRAPH DFS myGraph A;
+   Note: Traverses graph depth by depth from start vertex
+
+9. DIJKSTRA'S SHORTEST PATH
+   Syntax: GRAPH DIJKSTRA <graph_name> <start_vertex> <end_vertex>;
+   Example: GRAPH DIJKSTRA myGraph A C;
+   Note: Finds shortest path between two vertices
+
+========================================
+
+=== EXAMPLE WORKFLOW ===
+
+ChronoDB> CREATE TABLE students (id INT, name STRING, gpa FLOAT);
+[SUCCESS]: Table 'students' created.
+
+ChronoDB> INSERT INTO students VALUES 1 Alice 3.8;
+[SUCCESS]: Record inserted.
+
+ChronoDB> INSERT INTO students VALUES 2 Bob 3.5;
+[SUCCESS]: Record inserted.
+
+ChronoDB> SELECT * FROM students;
++----+-------+-----+
+| ID |  NAME | GPA |
++----+-------+-----+
+|  1 | Alice | 3.8 |
+|  2 |  Bob  | 3.5 |
++----+-------+-----+
+
+ChronoDB> UPDATE students SET gpa 4.0 WHERE ID 1;
+[SUCCESS]: Record updated.
+
+ChronoDB> DELETE FROM students WHERE ID 2;
+[SUCCESS]: Record deleted.
+
+ChronoDB> UNDO;
+[SUCCESS]: Last action undone successfully.
+
+ChronoDB> SELECT * FROM students;
++----+-------+-----+
+| ID |  NAME | GPA |
++----+-------+-----+
+|  1 | Alice | 4.0 |
+|  2 |  Bob  | 3.5 |
++----+-------+-----+
+
+ChronoDB> exit;
+
+========================================
+
+=== IMPORTANT NOTES ===
+
+- All commands must end with a semicolon (;)
+- Table names, field names, and vertex names are case-sensitive
+- Commands (CREATE, UPDATE, SELECT, etc.) are case-insensitive
+- The EXIT command works in any case (exit, EXIT, Exit, etc.)
+- Records are identified by their ID (integer)
+- GPA must be a float value (e.g., 3.8, 4.0)
+- UNDO/REDO maintain a stack of operations
+- Graph operations require vertices to exist before adding edges between them
+
+========================================
