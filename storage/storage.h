@@ -7,6 +7,11 @@
 #include <fstream>
 #include <optional>
 #include "../utils/types.h"
+#include "../utils/types.h"
+#include <unordered_map>
+#include "../src/structures/avl_tree.h"
+#include "../src/structures/bst.h"
+#include "../src/structures/hash_table.h"
 using namespace std;
 
 namespace ChronoDB {
@@ -106,6 +111,33 @@ namespace ChronoDB {
         bool writeMetaFile(const string& tableName, const vector<Column>& columns) const;
         optional<vector<Column>> readMetaFile(const string& tableName) const;
         static bool typeStringMatchesValue(const string& typeStr, const RecordValue& v);
+
+        // --- Multi-Structure Management ---
+        enum class StructureType { HEAP, AVL, BST, HASH };
+        
+        // Registry: TableName -> StructureType
+        unordered_map<string, StructureType> tableStructures;
+
+        // In-Memory Structures (since we aren't persisting them to disk for this project demo)
+        // TableName -> Instance
+        unordered_map<string, AVLTree> avlTables;
+        unordered_map<string, BST> bstTables;
+        unordered_map<string, HashTable> hashTables;
+
+    public:
+        // Expose method to create with specific structure
+        bool createTable(const string& tableName, const vector<Column>& columns, const string& structureType);
+        
+        // Expose method to get structure type
+        StructureType getStructureType(const string& tableName) const;
+        
+        // Expose getters for specific tables (for Parser access to BFS/DFS)
+        BST* getBST(const string& tableName) {
+             if (bstTables.find(tableName) != bstTables.end()) return &bstTables[tableName];
+             return nullptr;
+        }
+
+    // Closing brace from original class
     };
 
 } // namespace ChronoDB

@@ -1,0 +1,2 @@
+table=Students1
+columns=id:INT,name:STRING

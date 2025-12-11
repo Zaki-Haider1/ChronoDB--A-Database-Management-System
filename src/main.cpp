@@ -29,16 +29,22 @@ int main() {
         if (inputLine.empty()) continue;
 
         // Check for EXIT (case-insensitive)
+        // Check for EXIT (case-insensitive)
         std::string inputUpper = Helper::toUpper(inputLine);
-        if (inputUpper == "EXIT") break;
+        
+        // Basic trim logic
+        size_t last = inputLine.find_last_not_of(" \t\r\n");
+        if (last == std::string::npos) continue; // Empty line
+        
+        // Remove trailing whitespace from the VIEW of the line for checking ';'
+        char lastChar = inputLine[last];
+
+        if (inputUpper.find("EXIT") == 0 || inputUpper.find("QUIT") == 0) break;
 
         commandBuffer += inputLine + " ";
 
         // If command ends with ';', execute it
-        if (inputLine.back() == ';') {
-            // Remove trailing "; " (semicolon + space)
-            commandBuffer.pop_back();  // Remove space
-            commandBuffer.pop_back();  // Remove semicolon
+        if (lastChar == ';') {
             parser.parseAndExecute(commandBuffer);
             commandBuffer.clear();
         }

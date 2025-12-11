@@ -90,6 +90,7 @@ namespace ChronoDB {
     StorageEngine::StorageEngine(const string& storageDir) : storageDirectory(storageDir) {
         if (!fs::exists(storageDirectory))
             fs::create_directories(storageDirectory);
+        // (In a real system we would load the 'tableStructures' registry from disk here)
     }
 
     StorageEngine::~StorageEngine() {}
@@ -103,49 +104,61 @@ namespace ChronoDB {
     }
 
     // New createTable with columns (writes meta + empty tbl)
-    bool StorageEngine::createTable(const string& tableName, const vector<Column>& columns) {
-        string path = tableDataPath(tableName);
-        if (fs::exists(path)) return false;
-
-        // Validate: require at least one column and first column must be INT (primary key)
-        if (columns.empty()) return false;
-        string firstTypeUpper = columns[0].type;
-        transform(firstTypeUpper.begin(), firstTypeUpper.end(), firstTypeUpper.begin(), ::toupper);
-        if (firstTypeUpper != "INT") {
-            // We require first column to be INT primary key for now
-            return false;
-        }
-
-        // create empty data file (one empty page)
-        ofstream out(path, ios::binary);
-        Page p;
-        p.pageID = 0;
-        vector<uint8_t> buffer;
-        p.serializeToBuffer(buffer);
-        out.write(reinterpret_cast<const char*>(buffer.data()), buffer.size());
-        out.close();
-
-        // write meta
-        if (!writeMetaFile(tableName, columns)) return false;
-        return true;
-    }
 
     // Backwards-compatible createTable that writes an empty table with no meta
     bool StorageEngine::createTable(const string& tableName) {
-        string path = tableDataPath(tableName);
-        if (fs::exists(path)) return false;
+       return createTable(tableName, {}, "HEAP");
+    }
 
-        ofstream out(path, ios::binary);
-        Page p;
-        p.pageID = 0;
-        vector<uint8_t> buffer;
-        p.serializeToBuffer(buffer);
-        out.write(reinterpret_cast<const char*>(buffer.data()), buffer.size());
-        out.close();
+    bool StorageEngine::createTable(const string& tableName, const vector<Column>& columns) {
+        return createTable(tableName, columns, "HEAP");
+    }
 
-        // write simple meta with zero columns
-        vector<Column> cols;
-        writeMetaFile(tableName, cols);
+    bool StorageEngine::createTable(const string& tableName, const vector<Column>& columns, const string& structureType) {
+        // 1. Check if already exists in memory registry
+        if (tableStructures.find(tableName) != tableStructures.end()) return false;
+
+        // 2. Register type
+        if (structureType == "AVL") {
+            tableStructures[tableName] = StructureType::AVL;
+            avlTables[tableName] = AVLTree(); 
+        } else if (structureType == "BST") {
+            tableStructures[tableName] = StructureType::BST;
+            bstTables[tableName] = BST();
+        } else if (structureType == "HASH") {
+            tableStructures[tableName] = StructureType::HASH;
+            hashTables[tableName] = HashTable();
+        } else {
+            tableStructures[tableName] = StructureType::HEAP;
+        }
+
+        // 3. Persist metadata (schema) to disk regardless of structure
+        // This allows us to know columns even if data is in memory
+        if (readMetaFile(tableName).has_value()) return false; 
+        
+        // Write meta file (if columns provided)
+        if (!columns.empty()) {
+             if (!writeMetaFile(tableName, columns)) return false;
+        } else {
+             // For legacy empty create
+             vector<Column> cols;
+             writeMetaFile(tableName, cols);
+        }
+
+        // 4. If HEAP, create the empty page file
+        if (tableStructures[tableName] == StructureType::HEAP) {
+             string path = tableDataPath(tableName);
+             ofstream file(path, ios::binary);
+             if (!file) return false;
+             // Write standard empty page
+             Page p;
+             p.pageID = 0;
+             vector<uint8_t> buffer;
+             p.serializeToBuffer(buffer);
+             file.write(reinterpret_cast<const char*>(buffer.data()), buffer.size());
+             file.close();
+        }
+
         return true;
     }
 
@@ -263,59 +276,80 @@ namespace ChronoDB {
     }
 
     bool StorageEngine::insertRecord(const string& tableName, const Record& rec) {
-        // validate schema matches
-        auto colsOpt = readMetaFile(tableName);
-        if (!colsOpt.has_value()) return false;
-        vector<Column> cols = colsOpt.value();
-
-        if (cols.empty()) {
-            // fallback: accept any (legacy)
-        } else {
-            if (rec.fields.size() != cols.size()) return false;
-
-            // require first column is int (primary key)
-            if (!holds_alternative<int>(rec.fields[0])) return false;
-
-            // types match
-            for (size_t i = 0; i < cols.size(); ++i) {
-                if (!typeStringMatchesValue(cols[i].type, rec.fields[i])) return false;
-            }
+        if (tableStructures.find(tableName) == tableStructures.end()) {
+             // Try to load from disk if not in memory (legacy support)
+             if (readMetaFile(tableName).has_value()) {
+                 tableStructures[tableName] = StructureType::HEAP;
+             } else {
+                 return false;
+             }
         }
 
-        // load all records, remove existing with same id (upsert behaviour)
-        vector<Record> records = loadAllRecords(tableName);
-        if (rec.fields.size() > 0 && holds_alternative<int>(rec.fields[0])) {
-            int id = get<int>(rec.fields[0]);
-            records.erase(
-                remove_if(records.begin(), records.end(),
-                    [&](const Record& r){ return get<int>(r.fields[0]) == id; }),
-                records.end()
-            );
-        }
+        switch (tableStructures[tableName]) {
+            case StructureType::AVL:
+                avlTables[tableName].insert(rec);
+                return true;
+            case StructureType::BST:
+                bstTables[tableName].insert(rec);
+                return true;
+            case StructureType::HASH:
+                hashTables[tableName].insert(rec);
+                return true;
+            case StructureType::HEAP:
+            default:
+                // Original Heap Logic
+                // validate schema matches
+                auto colsOpt = readMetaFile(tableName);
+                if (!colsOpt.has_value()) return false;
+                vector<Column> cols = colsOpt.value();
 
-        records.push_back(rec);
+                if (cols.empty()) {
+                    // fallback: accept any (legacy)
+                } else {
+                    if (rec.fields.size() != cols.size()) return false;
+                    // require first column is int (primary key)
+                    if (!holds_alternative<int>(rec.fields[0])) return false;
+                    // types match
+                    for (size_t i = 0; i < cols.size(); ++i) {
+                        if (!typeStringMatchesValue(cols[i].type, rec.fields[i])) return false;
+                    }
+                }
 
-        // write all records back (pack into pages)
-        ofstream out(tableDataPath(tableName), ios::binary | ios::trunc);
-        if (!out) return false;
+                // load all records, remove existing with same id (upsert behaviour)
+                vector<Record> records = loadAllRecords(tableName);
+                if (rec.fields.size() > 0 && holds_alternative<int>(rec.fields[0])) {
+                    int id = get<int>(rec.fields[0]);
+                    records.erase(
+                        remove_if(records.begin(), records.end(),
+                            [&](const Record& r){ return get<int>(r.fields[0]) == id; }),
+                        records.end()
+                    );
+                }
 
-        Page p;
-        p.pageID = 0;
-        for (const auto& r : records) {
-            vector<uint8_t> bytes;
-            serializeRecord(r, bytes);
-            auto optSlot = p.insertRawRecord(bytes);
-            if (!optSlot.has_value()) {
+                records.push_back(rec);
+
+                // write all records back (pack into pages)
+                ofstream out(tableDataPath(tableName), ios::binary | ios::trunc);
+                if (!out) return false;
+
+                Page p;
+                p.pageID = 0;
+                for (const auto& r : records) {
+                    vector<uint8_t> bytes;
+                    serializeRecord(r, bytes);
+                    auto optSlot = p.insertRawRecord(bytes);
+                    if (!optSlot.has_value()) {
+                        vector<uint8_t> buffer; p.serializeToBuffer(buffer);
+                        out.write((char*)buffer.data(), buffer.size());
+                        p = Page(); p.pageID++;
+                        p.insertRawRecord(bytes);
+                    }
+                }
                 vector<uint8_t> buffer; p.serializeToBuffer(buffer);
                 out.write((char*)buffer.data(), buffer.size());
-                p = Page(); p.pageID++;
-                p.insertRawRecord(bytes);
-            }
+                out.close();
+                return true;
         }
-        vector<uint8_t> buffer; p.serializeToBuffer(buffer);
-        out.write((char*)buffer.data(), buffer.size());
-        out.close();
-        return true;
     }
 
     bool StorageEngine::updateRecord(const string& tableName, int id, const Record& newRecord) {
@@ -399,17 +433,32 @@ namespace ChronoDB {
     }
 
     vector<Record> StorageEngine::selectAll(const string& tableName) {
-        vector<Record> outRecords;
-        uint32_t pages = pageCount(tableName);
-        for (uint32_t i = 0; i < pages; ++i) {
-            Page p; readPageFromFile(tableName, i, p);
-            for (uint16_t s = 0; s < p.slots.size(); ++s) {
-                if (!p.slots[s].active) continue;
-                vector<uint8_t> raw; p.readRawRecord(s, raw);
-                Record rec; if (deserializeRecord(raw, rec)) outRecords.push_back(move(rec));
-            }
+        if (tableStructures.find(tableName) == tableStructures.end()) {
+             if (readMetaFile(tableName).has_value()) tableStructures[tableName] = StructureType::HEAP;
+             else return {};
         }
-        return outRecords;
+
+        switch (tableStructures[tableName]) {
+            case StructureType::AVL:
+                return avlTables[tableName].getAllSorted();
+            case StructureType::BST:
+                return bstTables[tableName].getAllSorted();
+            case StructureType::HASH:
+                return hashTables[tableName].getAll();
+            case StructureType::HEAP:
+            default:
+                vector<Record> outRecords;
+                uint32_t pages = pageCount(tableName);
+                for (uint32_t i = 0; i < pages; ++i) {
+                    Page p; readPageFromFile(tableName, i, p);
+                    for (uint16_t s = 0; s < p.slots.size(); ++s) {
+                        if (!p.slots[s].active) continue;
+                        vector<uint8_t> raw; p.readRawRecord(s, raw);
+                        Record rec; if (deserializeRecord(raw, rec)) outRecords.push_back(move(rec));
+                    }
+                }
+                return outRecords;
+        }
     }
 
     // Helper method to load all records from a table (used by update/delete to avoid redundancy)
@@ -506,6 +555,13 @@ namespace ChronoDB {
         auto opt = readMetaFile(tableName);
         if (!opt.has_value()) return {};
         return opt.value();
+    }
+
+    StorageEngine::StructureType StorageEngine::getStructureType(const string& tableName) const {
+        if (tableStructures.find(tableName) != tableStructures.end()) {
+            return tableStructures.at(tableName);
+        }
+        return StructureType::HEAP;
     }
 
 } // namespace ChronoDB

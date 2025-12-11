@@ -80,6 +80,7 @@ namespace ChronoDB {
         }
 
         std::string tableName = tokens[2].value;
+        std::string structureType = "HEAP";
 
         size_t i = 3;
 
@@ -113,20 +114,25 @@ namespace ChronoDB {
                 i++;
         }
 
-        if (i >= tokens.size() || tokens[i].value != ")") {
-            Helper::printError("Expected ')' after column list.");
-            return;
+        if (i < tokens.size()) {
+            if (Helper::toUpper(tokens[i].value) == "USING") {
+                if (i + 1 >= tokens.size()) {
+                    Helper::printError("Expected structure type after USING");
+                    return;
+                }
+                structureType = Helper::toUpper(tokens[i+1].value);
+            }
         }
 
-        if (storage.createTable(tableName, columns)) {
-            Helper::printSuccess("Table '" + tableName + "' created (" + std::to_string(columns.size()) + " columns)");
+        if (storage.createTable(tableName, columns, structureType)) {
+            Helper::printSuccess("Table '" + tableName + "' created using " + structureType + " (" + std::to_string(columns.size()) + " columns)");
 
             undoStack.push([this, tableName]() {
                 std::cout << "[UNDO] Table removed: " << tableName << std::endl;
             });
 
         } else {
-            Helper::printError("Table already exists.");
+            Helper::printError("Table already exists or invalid structure.");
         }
     }
 
@@ -194,11 +200,48 @@ namespace ChronoDB {
     // ----------------------
     void Parser::handleSelect(const std::vector<Token>& tokens) {
         if (tokens.size() < 4) {
-            Helper::printError("Syntax: SELECT * FROM <table>");
+            Helper::printError("Syntax: SELECT * FROM <table> [WHERE ID <id> USING BFS|DFS]");
             return;
         }
 
         std::string tableName = tokens[3].value;
+
+        // Check for specific Algorithm Selection (BFS/DFS)
+        // Syntax: SELECT * FROM table WHERE ID 10 USING BFS
+        bool usingWithId = false;
+        if (tokens.size() >= 9) {
+             if (Helper::toUpper(tokens[4].value) == "WHERE" && 
+                 Helper::toUpper(tokens[5].value) == "ID") {
+                     if (Helper::toUpper(tokens[7].value) == "USING") {
+                         usingWithId = true;
+                         int id = std::stoi(tokens[6].value);
+                         std::string algo = Helper::toUpper(tokens[8].value);
+                         
+                         BST* bst = storage.getBST(tableName);
+                         if (!bst) {
+                             Helper::printError("BFS/DFS only supported on BST tables.");
+                             return;
+                         }
+
+                         std::optional<Record> res;
+                         if (algo == "BFS") res = bst->searchBFS(id);
+                         else if (algo == "DFS") res = bst->searchDFS(id);
+                         else {
+                             Helper::printError("Unknown algorithm: " + algo);
+                             return;
+                         }
+
+                         if (res.has_value()) {
+                             auto cols = storage.getTableColumns(tableName);
+                             std::vector<std::string> h; for(auto& c : cols) h.push_back(c.name);
+                             std::vector<std::vector<std::variant<int,float,std::string>>> r;
+                             r.push_back(res->fields);
+                             Helper::printTable(r, h);
+                         }
+                         return;
+                     }
+                 }
+        }
 
         auto rows = storage.selectAll(tableName);
         auto columns = storage.getTableColumns(tableName);

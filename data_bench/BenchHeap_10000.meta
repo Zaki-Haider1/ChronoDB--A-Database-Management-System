@@ -1,0 +1,2 @@
+table=BenchHeap_10000
+columns=id:INT,val:STRING
