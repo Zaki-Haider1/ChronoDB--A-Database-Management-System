@@ -2,9 +2,11 @@
 #include <cctype>
 #include <unordered_set>
 
+using namespace std;
+
 namespace ChronoDB {
 
-    Lexer::Lexer(std::string input) : src(std::move(input)) {}
+    Lexer::Lexer(string input) : src(move(input)) {}
 
     char Lexer::current() {
         if (pos >= src.size()) return '\0';
@@ -19,7 +21,7 @@ namespace ChronoDB {
 
     Token Lexer::readString() {
         advance(); 
-        std::string val;
+        string val;
         while (current() != '"' && current() != '\0') {
             val += current();
             advance();
@@ -29,7 +31,7 @@ namespace ChronoDB {
     }
 
     Token Lexer::readNumber() {
-        std::string val;
+        string val;
         while (isdigit(current()) || current() == '.') {
             val += current();
             advance();
@@ -38,7 +40,7 @@ namespace ChronoDB {
     }
 
     Token Lexer::readIdentifierOrKeyword() {
-        std::string val;
+        string val;
         while (isalnum(current()) || current() == '_') {
             val += current();
             advance();
@@ -58,18 +60,18 @@ namespace ChronoDB {
         advance();
 
         if ((c == '=' || c == '!' || c == '<' || c == '>') && current() == '=') {
-            std::string sym(1, c);
+            string sym(1, c);
             sym += '=';
             advance();
             return {TokenType::SYMBOL, sym};
         }
 
-        std::string sym(1, c);
+        string sym(1, c);
         return {TokenType::SYMBOL, sym};
     }
 
-    std::vector<Token> Lexer::tokenize() {
-        std::vector<Token> tokens;
+    vector<Token> Lexer::tokenize() {
+        vector<Token> tokens;
         Token t = nextToken();
         while (t.type != TokenType::END_OF_FILE) {
             tokens.push_back(t);

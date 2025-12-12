@@ -1,0 +1,33 @@
+CREATE TABLE students (id INT, name STRING, gpa FLOAT);
+INSERT INTO students VALUES 1 Alice 3.8;
+INSERT INTO students VALUES 2 Bob 3.5;
+INSERT INTO students VALUES 3 Charlie 3.9;
+INSERT INTO students VALUES 4 David 2.5;
+
+SELECT * FROM students;
+
+UPDATE students SET gpa 4.0 WHERE ID 1;
+SELECT * FROM students;
+
+DELETE FROM students WHERE ID 4;
+SELECT * FROM students;
+
+UNDO;
+SELECT * FROM students;
+
+REDO;
+SELECT * FROM students;
+
+GRAPH CREATE CampusMap;
+GRAPH IMPORT CampusMap FROM students COLUMN name;
+GRAPH PRINT CampusMap;
+
+GRAPH ADDEDGE CampusMap Alice Bob 5;
+GRAPH ADDEDGE CampusMap Bob Charlie 10;
+GRAPH ADDEDGE CampusMap Alice Charlie 20;
+
+GRAPH BFS CampusMap Alice;
+GRAPH DFS CampusMap Alice;
+GRAPH DIJKSTRA CampusMap Alice Charlie;
+
+GRAPH SHOW CampusMap;

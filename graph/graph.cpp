@@ -1,16 +1,26 @@
 #include "graph.h"
+#include <iostream>
+#include <algorithm>
+#include <queue>
+#include <stack>
+#include <limits>
+
+using namespace std;
 
 // --- Graph Class Implementation ---
 
-void Graph::addVertex(const std::string &name) {
+void Graph::addVertex(const string &name) {
   if (adjacencyList.find(name) == adjacencyList.end()) {
     adjacencyList[name] = {};
-  } else {
-    std::cerr << "Vertex " << name << " already exists." << std::endl;
   }
+  // Idempotent: If it exists, do nothing (safe for Import)
 }
 
-void Graph::addEdge(const std::string &u, const std::string &v, int weight,
+const unordered_map<string, vector<pair<string, int>>>& Graph::getAdjacencyList() const {
+  return adjacencyList;
+}
+
+void Graph::addEdge(const string &u, const string &v, int weight,
                     bool isDirected) {
   // Automatically add vertices if they don't exist
   if (adjacencyList.find(u) == adjacencyList.end()) {
@@ -30,65 +40,65 @@ void Graph::addEdge(const std::string &u, const std::string &v, int weight,
 }
 
 void Graph::printGraph() const {
-  std::cout << "Graph Adjacency List:" << std::endl;
+  cout << "Graph Adjacency List:" << endl;
   for (const auto &pair : adjacencyList) {
-    std::cout << pair.first << " -> ";
+    cout << pair.first << " -> ";
     for (const auto &neighbor : pair.second) {
-      std::cout << "(" << neighbor.first << ", " << neighbor.second << ") ";
+      cout << "(" << neighbor.first << ", " << neighbor.second << ") ";
     }
-    std::cout << std::endl;
+    cout << endl;
   }
 }
 
 // --- GraphEngine Class Implementation ---
 
-void GraphEngine::createGraph(const std::string &name) {
+void GraphEngine::createGraph(const string &name) {
   if (graphs.find(name) == graphs.end()) {
     graphs[name] = Graph();
-    std::cout << "Graph '" << name << "' created successfully." << std::endl;
+    cout << "Graph '" << name << "' created successfully." << endl;
   } else {
-    std::cerr << "Graph '" << name << "' already exists." << std::endl;
+    cerr << "Graph '" << name << "' already exists." << endl;
   }
 }
 
-Graph *GraphEngine::getGraph(const std::string &name) {
+Graph *GraphEngine::getGraph(const string &name) {
   if (graphs.find(name) != graphs.end()) {
     return &graphs[name];
   } else {
-    std::cerr << "Graph '" << name << "' not found." << std::endl;
+    // cerr << "Graph '" << name << "' not found." << endl;
     return nullptr;
   }
 }
 
-void GraphEngine::deleteGraph(const std::string &name) {
+void GraphEngine::deleteGraph(const string &name) {
   if (graphs.erase(name)) {
-    std::cout << "Graph '" << name << "' deleted successfully." << std::endl;
+    cout << "Graph '" << name << "' deleted successfully." << endl;
   } else {
-    std::cerr << "Graph '" << name << "' not found." << std::endl;
+    cerr << "Graph '" << name << "' not found." << endl;
   }
 }
 
 // --- Graph Algorithms ---
 
-void Graph::bfs(const std::string &startNode) {
+void Graph::bfs(const string &startNode) {
   if (adjacencyList.find(startNode) == adjacencyList.end()) {
-    std::cerr << "Start node '" << startNode << "' not found in graph."
-              << std::endl;
+    cerr << "Start node '" << startNode << "' not found in graph."
+              << endl;
     return;
   }
 
-  std::unordered_map<std::string, bool> visited;
-  std::queue<std::string> q;
+  unordered_map<string, bool> visited;
+  queue<string> q;
 
   visited[startNode] = true;
   q.push(startNode);
 
-  std::cout << "BFS Traversal: ";
+  cout << "BFS Traversal: ";
 
   while (!q.empty()) {
-    std::string current = q.front();
+    string current = q.front();
     q.pop();
-    std::cout << current << " -> ";
+    cout << current << " -> ";
 
     for (const auto &neighbor : adjacencyList[current]) {
       if (!visited[neighbor.first]) {
@@ -97,29 +107,29 @@ void Graph::bfs(const std::string &startNode) {
       }
     }
   }
-  std::cout << "End" << std::endl;
+  cout << "End" << endl;
 }
 
-void Graph::dfs(const std::string &startNode) {
+void Graph::dfs(const string &startNode) {
   if (adjacencyList.find(startNode) == adjacencyList.end()) {
-    std::cerr << "Start node '" << startNode << "' not found in graph."
-              << std::endl;
+    cerr << "Start node '" << startNode << "' not found in graph."
+              << endl;
     return;
   }
 
-  std::unordered_map<std::string, bool> visited;
-  std::stack<std::string> s;
+  unordered_map<string, bool> visited;
+  stack<string> s;
 
   s.push(startNode);
 
-  std::cout << "DFS Traversal: ";
+  cout << "DFS Traversal: ";
 
   while (!s.empty()) {
-    std::string current = s.top();
+    string current = s.top();
     s.pop();
 
     if (!visited[current]) {
-      std::cout << current << " -> ";
+      cout << current << " -> ";
       visited[current] = true;
 
       // Push neighbors to stack
@@ -130,39 +140,39 @@ void Graph::dfs(const std::string &startNode) {
       }
     }
   }
-  std::cout << "End" << std::endl;
+  cout << "End" << endl;
 }
 
-void Graph::dijkstra(const std::string &startNode, const std::string &endNode) {
+void Graph::dijkstra(const string &startNode, const string &endNode) {
   if (adjacencyList.find(startNode) == adjacencyList.end()) {
-    std::cerr << "Start node '" << startNode << "' not found in graph."
-              << std::endl;
+    cerr << "Start node '" << startNode << "' not found in graph."
+              << endl;
     return;
   }
   if (adjacencyList.find(endNode) == adjacencyList.end()) {
-    std::cerr << "End node '" << endNode << "' not found in graph."
-              << std::endl;
+    cerr << "End node '" << endNode << "' not found in graph."
+              << endl;
     return;
   }
 
-  std::unordered_map<std::string, int> distances;
-  std::unordered_map<std::string, std::string> parent;
+  unordered_map<string, int> distances;
+  unordered_map<string, string> parent;
 
   for (const auto &pair : adjacencyList) {
-    distances[pair.first] = std::numeric_limits<int>::max();
+    distances[pair.first] = numeric_limits<int>::max();
   }
   distances[startNode] = 0;
 
-  std::priority_queue<std::pair<int, std::string>,
-                      std::vector<std::pair<int, std::string>>,
-                      std::greater<std::pair<int, std::string>>>
+  priority_queue<pair<int, string>,
+                      vector<pair<int, string>>,
+                      greater<pair<int, string>>>
       pq;
 
   pq.push({0, startNode});
 
   while (!pq.empty()) {
     int currentDist = pq.top().first;
-    std::string current = pq.top().second;
+    string current = pq.top().second;
     pq.pop();
 
     if (current == endNode)
@@ -172,7 +182,7 @@ void Graph::dijkstra(const std::string &startNode, const std::string &endNode) {
       continue;
 
     for (const auto &neighbor : adjacencyList[current]) {
-      std::string nextNode = neighbor.first;
+      string nextNode = neighbor.first;
       int weight = neighbor.second;
 
       if (distances[current] + weight < distances[nextNode]) {
@@ -183,43 +193,43 @@ void Graph::dijkstra(const std::string &startNode, const std::string &endNode) {
     }
   }
 
-  if (distances[endNode] == std::numeric_limits<int>::max()) {
-    std::cout << "No path found from " << startNode << " to " << endNode
-              << std::endl;
+  if (distances[endNode] == numeric_limits<int>::max()) {
+    cout << "No path found from " << startNode << " to " << endNode
+              << endl;
   } else {
-    std::vector<std::string> path;
-    std::string curr = endNode;
+    vector<string> path;
+    string curr = endNode;
     while (curr != startNode) {
       path.push_back(curr);
       curr = parent[curr];
     }
     path.push_back(startNode);
-    std::reverse(path.begin(), path.end());
+    reverse(path.begin(), path.end());
 
-    std::cout << "Path: ";
+    cout << "Path: ";
     for (size_t i = 0; i < path.size(); ++i) {
-      std::cout << path[i] << (i < path.size() - 1 ? " -> " : "");
+      cout << path[i] << (i < path.size() - 1 ? " -> " : "");
     }
-    std::cout << "\nTotal Cost: " << distances[endNode] << std::endl;
+    cout << "\nTotal Cost: " << distances[endNode] << endl;
   }
 }
 
-void Graph::removeVertex(const std::string &name) {
+void Graph::removeVertex(const string &name) {
   adjacencyList.erase(name);
   for (auto& [vertex, neighbors] : adjacencyList) {
     neighbors.erase(
-        std::remove_if(neighbors.begin(), neighbors.end(),
+        remove_if(neighbors.begin(), neighbors.end(),
                       [&](const auto& p){ return p.first == name; }),
         neighbors.end()
     );
   }
 }
 
-void Graph::removeEdge(const std::string &u, const std::string &v, bool isDirected) {
-  auto remove = [&](const std::string &from, const std::string &to) {
+void Graph::removeEdge(const string &u, const string &v, bool isDirected) {
+  auto remove = [&](const string &from, const string &to) {
     auto &neighbors = adjacencyList[from];
     neighbors.erase(
-        std::remove_if(neighbors.begin(), neighbors.end(),
+        remove_if(neighbors.begin(), neighbors.end(),
                       [&](const auto& p){ return p.first == to; }),
         neighbors.end()
     );

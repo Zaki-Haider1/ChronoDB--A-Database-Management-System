@@ -1,2 +1,2 @@
-table=BenchHeap_1000
+table=BenchAVL_100000
 columns=id:INT,val:STRING

@@ -31,11 +31,14 @@ public:
   void dfs(const std::string &startNode);
   void dijkstra(const std::string &startNode, const std::string &endNode);
 
-  //new helpers for like undo and redo
+  // Helpers
   void removeVertex(const std::string &name);
   void removeEdge(const std::string &u, const std::string &v, bool isDirected = false);
-  Graph getCopy() const; //returns a copy of the current graph
+  Graph getCopy() const; 
   void restoreFrom(const Graph& snapshot);
+
+  // Visualization Getter
+  const std::unordered_map<std::string, std::vector<std::pair<std::string, int>>>& getAdjacencyList() const;
 };
 
 class GraphEngine {

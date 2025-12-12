@@ -3,33 +3,35 @@
 #include <cmath>
 #include "helpers.h"
 
+using namespace std;
+
 namespace ChronoDB {
 
-    bool Sorting::compare(const Record& a, const Record& b, int colIndex, const std::string& colType) {
+    bool Sorting::compare(const Record& a, const Record& b, int colIndex, const string& colType) {
         if (colType == "INT") {
-            return std::get<int>(a.fields[colIndex]) < std::get<int>(b.fields[colIndex]);
+            return get<int>(a.fields[colIndex]) < get<int>(b.fields[colIndex]);
         } else if (colType == "FLOAT") {
-            return std::get<float>(a.fields[colIndex]) < std::get<float>(b.fields[colIndex]);
+            return get<float>(a.fields[colIndex]) < get<float>(b.fields[colIndex]);
         } else {
-            return std::get<std::string>(a.fields[colIndex]) < std::get<std::string>(b.fields[colIndex]);
+            return get<string>(a.fields[colIndex]) < get<string>(b.fields[colIndex]);
         }
     }
 
-    bool Sorting::compareVal(const Record& a, const std::string& bVal, int colIndex, const std::string& colType) {
+    bool Sorting::compareVal(const Record& a, const string& bVal, int colIndex, const string& colType) {
         if (colType == "INT") {
-            return std::get<int>(a.fields[colIndex]) < std::stoi(bVal);
+            return get<int>(a.fields[colIndex]) < stoi(bVal);
         } else if (colType == "FLOAT") {
-            return std::get<float>(a.fields[colIndex]) < std::stof(bVal);
+            return get<float>(a.fields[colIndex]) < stof(bVal);
         } else {
-            return std::get<std::string>(a.fields[colIndex]) < bVal;
+            return get<string>(a.fields[colIndex]) < bVal;
         }
     }
 
-    void Sorting::merge(std::vector<Record>& rows, int left, int mid, int right, int colIndex, const std::string& colType) {
+    void Sorting::merge(vector<Record>& rows, int left, int mid, int right, int colIndex, const string& colType) {
         int n1 = mid - left + 1;
         int n2 = right - mid;
 
-        std::vector<Record> L(n1), R(n2);
+        vector<Record> L(n1), R(n2);
 
         for (int i = 0; i < n1; i++) L[i] = rows[left + i];
         for (int j = 0; j < n2; j++) R[j] = rows[mid + 1 + j];
@@ -61,7 +63,7 @@ namespace ChronoDB {
         }
     }
 
-    void Sorting::mergeSortRecursive(std::vector<Record>& rows, int left, int right, int colIndex, const std::string& colType) {
+    void Sorting::mergeSortRecursive(vector<Record>& rows, int left, int right, int colIndex, const string& colType) {
         if (left >= right) return;
         int mid = left + (right - left) / 2;
         mergeSortRecursive(rows, left, mid, colIndex, colType);
@@ -69,12 +71,12 @@ namespace ChronoDB {
         merge(rows, left, mid, right, colIndex, colType);
     }
 
-    void Sorting::mergeSort(std::vector<Record>& rows, int colIndex, const std::string& colType) {
+    void Sorting::mergeSort(vector<Record>& rows, int colIndex, const string& colType) {
         if (rows.empty()) return;
         mergeSortRecursive(rows, 0, rows.size() - 1, colIndex, colType);
     }
 
-    int Sorting::binarySearchLowerBound(const std::vector<Record>& rows, int colIndex, const std::string& colType, const std::string& val) {
+    int Sorting::binarySearchLowerBound(const vector<Record>& rows, int colIndex, const string& colType, const string& val) {
         int left = 0, right = rows.size();
         while (left < right) {
             int mid = left + (right - left) / 2;
@@ -87,7 +89,7 @@ namespace ChronoDB {
         return left;
     }
     
-    int Sorting::binarySearchUpperBound(const std::vector<Record>& rows, int colIndex, const std::string& colType, const std::string& val) {
+    int Sorting::binarySearchUpperBound(const vector<Record>& rows, int colIndex, const string& colType, const string& val) {
         int left = 0, right = rows.size();
         while (left < right) {
             int mid = left + (right - left) / 2;
@@ -110,9 +112,9 @@ namespace ChronoDB {
             bool rowLessVal = compareVal(rows[mid], val, colIndex, colType);
             bool valLessRow = false;
             
-             if (colType == "INT") valLessRow = std::stoi(val) < std::get<int>(rows[mid].fields[colIndex]);
-             else if (colType == "FLOAT") valLessRow = std::stof(val) < std::get<float>(rows[mid].fields[colIndex]);
-             else valLessRow = val < std::get<std::string>(rows[mid].fields[colIndex]);
+             if (colType == "INT") valLessRow = stoi(val) < get<int>(rows[mid].fields[colIndex]);
+             else if (colType == "FLOAT") valLessRow = stof(val) < get<float>(rows[mid].fields[colIndex]);
+             else valLessRow = val < get<string>(rows[mid].fields[colIndex]);
              
              if (!valLessRow) { // rows[mid] <= val
                  left = mid + 1;

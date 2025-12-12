@@ -153,5 +153,8 @@ int main() {
     // N = 10,000
     runBenchmark(storage, 10000);
 
+    // N = 100,000 (Requirement: at least 3 input sizes)
+    runBenchmark(storage, 100000);
+
     return 0;
 }

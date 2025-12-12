@@ -595,7 +595,7 @@ namespace ChronoDB {
             auto rows = selectAll(tableName);
             for(auto& rec : rows) {
                 // Assuming ID is always the first field and an integer
-                if (std::get<int>(rec.fields[0]) == id) return true;
+                if (get<int>(rec.fields[0]) == id) return true;
             }
         }
         return false;

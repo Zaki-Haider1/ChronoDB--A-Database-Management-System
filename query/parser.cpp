@@ -1,9 +1,12 @@
 #include "parser.h"
 #include <iostream>
 #include <cmath>
+#include <cctype>
 #include "../utils/types.h"
 #include "../utils/helpers.h"
 #include "../utils/sorting.h"
+
+using namespace std;
 
 namespace ChronoDB {
 
@@ -49,11 +52,12 @@ namespace ChronoDB {
     // ----------------------
     // MAIN PARSE FUNCTION
     // ----------------------
-    void Parser::parseAndExecute(const std::string& commandLine) {
-        std::string cmdUpper = Helper::toUpper(commandLine);
+    void Parser::parseAndExecute(const string& commandLine) {
+        string cmdUpper = Helper::toUpper(commandLine);
 
         if (cmdUpper == "UNDO") { undo(); return; }
         if (cmdUpper == "REDO") { redo(); return; }
+        if (cmdUpper == "EXIT") { exit(0); }
 
         while(!redoStack.empty()) redoStack.pop();
 
@@ -61,7 +65,7 @@ namespace ChronoDB {
         auto tokens = lexer.tokenize();
         if (tokens.empty()) return;
 
-        std::string cmd = Helper::toUpper(tokens[0].value);
+        string cmd = Helper::toUpper(tokens[0].value);
 
         if (cmd == "CREATE") handleCreate(tokens);
         else if (cmd == "INSERT") handleInsert(tokens);
@@ -75,21 +79,21 @@ namespace ChronoDB {
     // ----------------------
     // CREATE TABLE
     // ----------------------
-    void Parser::handleCreate(const std::vector<Token>& tokens) {
+    void Parser::handleCreate(const vector<Token>& tokens) {
         if (tokens.size() < 4 || Helper::toUpper(tokens[1].value) != "TABLE") {
             Helper::printError("Syntax: CREATE TABLE <name> [TYPE] (<col> <type>, ...)");
             return;
         }
 
-        std::string tableName = tokens[2].value;
-        std::string structureType = "HEAP";
+        string tableName = tokens[2].value;
+        string structureType = "HEAP";
 
         size_t i = 3;
 
         // Check for optional Structure Type before '('
         // Example: CREATE TABLE Products AVL (...)
         if (i < tokens.size() && tokens[i].value != "(") {
-            std::string type = Helper::toUpper(tokens[i].value);
+            string type = Helper::toUpper(tokens[i].value);
             if (type == "AVL" || type == "BST" || type == "HASH" || type == "HEAP") {
                 structureType = type;
                 i++;
@@ -102,7 +106,7 @@ namespace ChronoDB {
         }
         i++; // Consume '('
 
-        std::vector<Column> columns;
+        vector<Column> columns;
 
         while (i < tokens.size() && tokens[i].value != ")") {
             
@@ -117,8 +121,8 @@ namespace ChronoDB {
                 return;
             }
 
-            std::string colName = tokens[i].value;
-            std::string colType = Helper::toUpper(tokens[i+1].value);
+            string colName = tokens[i].value;
+            string colType = Helper::toUpper(tokens[i+1].value);
 
             if (colType != "INT" && colType != "FLOAT" && colType != "STRING") {
                 Helper::printError("Invalid column type: " + colType);
@@ -146,7 +150,7 @@ namespace ChronoDB {
         }
 
         if (storage.createTable(tableName, columns, structureType)) {
-            Helper::printSuccess("Table '" + tableName + "' created using " + structureType + " (" + std::to_string(columns.size()) + " columns)");
+            Helper::printSuccess("Table '" + tableName + "' created using " + structureType + " (" + to_string(columns.size()) + " columns)");
 
             undoStack.push([this, tableName]() {
                 Helper::println("[UNDO] Table removed: " + tableName);
@@ -160,7 +164,7 @@ namespace ChronoDB {
     // ----------------------
     // INSERT
     // ----------------------
-    void Parser::handleInsert(const std::vector<Token>& tokens) {
+    void Parser::handleInsert(const vector<Token>& tokens) {
 
         if (tokens.size() < 5 ||
             Helper::toUpper(tokens[1].value) != "INTO" ||
@@ -169,7 +173,7 @@ namespace ChronoDB {
             return;
         }
 
-        std::string tableName = tokens[2].value;
+        string tableName = tokens[2].value;
 
         auto columns = storage.getTableColumns(tableName);
         if (columns.empty()) {
@@ -180,7 +184,7 @@ namespace ChronoDB {
         size_t expected = columns.size();
         
         // Collect value tokens, skipping commas and handling parentheses
-        std::vector<std::string> values;
+        vector<string> values;
         size_t current = 4;
         bool insideParens = false;
 
@@ -208,22 +212,22 @@ namespace ChronoDB {
         }
 
         if (values.size() != expected) {
-            Helper::printError("Expected " + std::to_string(expected) + " values, got " + std::to_string(values.size()));
+            Helper::printError("Expected " + to_string(expected) + " values, got " + to_string(values.size()));
             return;
         }
 
         Record r;
 
         for (size_t i = 0; i < columns.size(); i++) {
-            std::string value = values[i];
-            std::string type = columns[i].type;
+            string value = values[i];
+            string type = columns[i].type;
 
             try {
                 if (type == "INT") {
-                    r.fields.push_back(std::stoi(value));
+                    r.fields.push_back(stoi(value));
                 }
                 else if (type == "FLOAT") {
-                    r.fields.push_back(std::stof(value));
+                    r.fields.push_back(stof(value));
                 }
                 else {
                     r.fields.push_back(value);
@@ -238,9 +242,9 @@ namespace ChronoDB {
             Helper::printSuccess("Record inserted.");
 
             undoStack.push([this, tableName, r]() {
-                int id = std::get<int>(r.fields[0]);
+                int id = get<int>(r.fields[0]);
                 storage.deleteRecord(tableName, id);
-                Helper::printSuccess("[UNDO] Removed inserted row ID " + std::to_string(id));
+                Helper::printSuccess("[UNDO] Removed inserted row ID " + to_string(id));
             });
 
         } else {
@@ -251,13 +255,13 @@ namespace ChronoDB {
     // ----------------------
     // SELECT
     // ----------------------
-    void Parser::handleSelect(const std::vector<Token>& tokens) {
+    void Parser::handleSelect(const vector<Token>& tokens) {
         if (tokens.size() < 4) {
             Helper::printError("Syntax: SELECT * FROM <table> [WHERE <col> <op> <val>]");
             return;
         }
 
-        std::string tableName = tokens[3].value;
+        string tableName = tokens[3].value;
 
         // Check for specific Algorithm Selection (BFS/DFS) (Legacy/Lab compatible)
         // Syntax: SELECT * FROM table WHERE ID 10 USING BFS
@@ -266,8 +270,8 @@ namespace ChronoDB {
             Helper::toUpper(tokens[5].value) == "ID" &&
             Helper::toUpper(tokens[7].value) == "USING") {
                 
-             int id = std::stoi(tokens[6].value);
-             std::string algo = Helper::toUpper(tokens[8].value);
+             int id = stoi(tokens[6].value);
+             string algo = Helper::toUpper(tokens[8].value);
              
              BST* bst = storage.getBST(tableName);
              if (!bst) {
@@ -275,7 +279,7 @@ namespace ChronoDB {
                  return;
              }
 
-             std::optional<Record> res;
+             optional<Record> res;
              if (algo == "BFS") res = bst->searchBFS(id);
              else if (algo == "DFS") res = bst->searchDFS(id);
              else {
@@ -285,8 +289,8 @@ namespace ChronoDB {
 
              if (res.has_value()) {
                  auto cols = storage.getTableColumns(tableName);
-                 std::vector<std::string> h; for(auto& c : cols) h.push_back(c.name);
-                 std::vector<std::vector<std::variant<int,float,std::string>>> r;
+                 vector<string> h; for(auto& c : cols) h.push_back(c.name);
+                 vector<vector<variant<int,float,string>>> r;
                  r.push_back(res->fields);
                  Helper::printTable(r, h);
              }
@@ -305,12 +309,12 @@ namespace ChronoDB {
         // Syntax: WHERE <col> <op> <val>
         // Ops: =, <, >, <=, >=
         if (tokens.size() >= 7 && Helper::toUpper(tokens[4].value) == "WHERE") {
-            std::string colName = tokens[5].value;
-            std::string op = tokens[6].value;
-            std::string valStr = tokens[7].value;
+            string colName = tokens[5].value;
+            string op = tokens[6].value;
+            string valStr = tokens[7].value;
 
             int colIndex = -1;
-            std::string colType = "";
+            string colType = "";
             for(size_t i=0; i<columns.size(); i++) {
                 if(Helper::toUpper(columns[i].name) == Helper::toUpper(colName)) {
                     colIndex = i;
@@ -335,7 +339,7 @@ namespace ChronoDB {
                 // This is O(N log N)
                 Sorting::mergeSort(rows, colIndex, colType);
                 
-                std::vector<Record> filtered;
+                vector<Record> filtered;
                 
                 // 2. Binary Search
                 if (op == ">" || op == ">=") {
@@ -369,22 +373,22 @@ namespace ChronoDB {
 
             } else {
                 // LINEAR SCAN for Equality (=) or others
-                std::vector<Record> filtered;
+                vector<Record> filtered;
                 for(auto& r : rows) {
                     bool match = false;
                     
                     if (colType == "INT") {
-                        int cell = std::get<int>(r.fields[colIndex]);
-                        int val = std::stoi(valStr);
+                        int cell = get<int>(r.fields[colIndex]);
+                        int val = stoi(valStr);
                         if (op == "=") match = (cell == val);
                     }
                     else if (colType == "FLOAT") {
-                        float cell = std::get<float>(r.fields[colIndex]);
-                        float val = std::stof(valStr);
-                        if (op == "=") match = (std::abs(cell - val) < 0.0001);
+                        float cell = get<float>(r.fields[colIndex]);
+                        float val = stof(valStr);
+                        if (op == "=") match = (abs(cell - val) < 0.0001);
                     }
                     else if (colType == "STRING") {
-                        std::string cell = std::get<std::string>(r.fields[colIndex]);
+                        string cell = get<string>(r.fields[colIndex]);
                         if (op == "=") match = (cell == valStr);
                     }
 
@@ -394,7 +398,7 @@ namespace ChronoDB {
             }
         }
 
-        std::vector<std::string> headers;
+        vector<string> headers;
         for (auto& c : columns) headers.push_back(c.name);
 
         if (rows.empty()) {
@@ -403,7 +407,7 @@ namespace ChronoDB {
             return;
         }
 
-        std::vector<std::vector<std::variant<int,float,std::string>>> tableRows;
+        vector<vector<variant<int,float,string>>> tableRows;
         for (auto& rec : rows)
             tableRows.push_back(rec.fields);
 
@@ -415,10 +419,11 @@ namespace ChronoDB {
     // ----------------------
     // UPDATE
     // ----------------------
-    void Parser::handleUpdate(const std::vector<Token>& tokens) {
+    void Parser::handleUpdate(const vector<Token>& tokens) {
         // UPDATE t SET col value WHERE ID id
 
-        if (tokens.size() != 8 ||
+        // Allow trailing semicolon (size 8 or 9)
+        if (tokens.size() < 8 ||
             Helper::toUpper(tokens[2].value) != "SET" ||
             Helper::toUpper(tokens[5].value) != "WHERE" ||
             Helper::toUpper(tokens[6].value) != "ID") {
@@ -426,10 +431,10 @@ namespace ChronoDB {
             return;
         }
 
-        std::string tableName = tokens[1].value;
-        std::string field = tokens[3].value;
-        std::string newValue = tokens[4].value;
-        int id = std::stoi(tokens[7].value);
+        string tableName = tokens[1].value;
+        string field = tokens[3].value;
+        string newValue = tokens[4].value;
+        int id = stoi(tokens[7].value);
 
         auto columns = storage.getTableColumns(tableName);
         auto rows = storage.selectAll(tableName);
@@ -448,22 +453,22 @@ namespace ChronoDB {
         }
 
         for (auto& rec : rows) {
-            if (std::get<int>(rec.fields[0]) == id) {
+            if (get<int>(rec.fields[0]) == id) {
                 Record old = rec;
 
                 if (columns[colIndex].type == "INT")
-                    rec.fields[colIndex] = std::stoi(newValue);
+                    rec.fields[colIndex] = stoi(newValue);
                 else if (columns[colIndex].type == "FLOAT")
-                    rec.fields[colIndex] = std::stof(newValue);
+                    rec.fields[colIndex] = stof(newValue);
                 else
                     rec.fields[colIndex] = newValue;
 
                 storage.updateRecord(tableName, id, rec);
 
                 undoStack.push([this, tableName, old]() {
-                    int oldId = std::get<int>(old.fields[0]);
+                    int oldId = get<int>(old.fields[0]);
                     storage.updateRecord(tableName, oldId, old);
-                    Helper::println("[UNDO] Reverted update for ID " + std::to_string(oldId));
+                    Helper::println("[UNDO] Reverted update for ID " + to_string(oldId));
                 });
 
                 Helper::printSuccess("Record updated.");
@@ -477,9 +482,9 @@ namespace ChronoDB {
     // ----------------------
     // DELETE
     // ----------------------
-    void Parser::handleDelete(const std::vector<Token>& tokens) {
+    void Parser::handleDelete(const vector<Token>& tokens) {
 
-        if (tokens.size() != 6 ||
+        if (tokens.size() < 6 ||
             Helper::toUpper(tokens[1].value) != "FROM" ||
             Helper::toUpper(tokens[3].value) != "WHERE" ||
             Helper::toUpper(tokens[4].value) != "ID") {
@@ -487,8 +492,8 @@ namespace ChronoDB {
             return;
         }
 
-        std::string tableName = tokens[2].value;
-        int id = std::stoi(tokens[5].value);
+        string tableName = tokens[2].value;
+        int id = stoi(tokens[5].value);
 
         auto rows = storage.selectAll(tableName);
 
@@ -496,7 +501,7 @@ namespace ChronoDB {
         Record deleted;
 
         for (auto& rec : rows) {
-            if (std::get<int>(rec.fields[0]) == id) {
+            if (get<int>(rec.fields[0]) == id) {
                 deleted = rec;
                 found = true;
                 break;
@@ -513,58 +518,112 @@ namespace ChronoDB {
 
         undoStack.push([this, tableName, deleted]() {
             storage.insertRecord(tableName, deleted);
-            Helper::println("[UNDO] Restored deleted ID " + std::to_string(std::get<int>(deleted.fields[0])));
+            Helper::println("[UNDO] Restored deleted ID " + to_string(get<int>(deleted.fields[0])));
         });
     }
 
     // ----------------------
-    // GRAPH COMMANDS
+     // GRAPH COMMANDS
     // ----------------------
-    void Parser::handleGraph(const std::vector<Token>& tokens) {
+    void Parser::handleGraph(const vector<Token>& tokens) {
         if (tokens.size() < 2) {
-            Helper::printError("GRAPH requires action.");
+            Helper::printError("GRAPH requires action: CREATE, ADDEDGE, IMPORT, BFS, DFS, DIJKSTRA, SHOW");
             return;
         }
 
-        std::string action = Helper::toUpper(tokens[1].value);
+        string action = Helper::toUpper(tokens[1].value);
 
-        if (action == "CREATE" && tokens.size() == 3) {
-            graph.createGraph(tokens[2].value);
+        // Helper to strip trailing non-alphanumeric (like ;)
+        auto cleanName = [](const string& in) -> string {
+            string out = in;
+            while (!out.empty() && !isalnum(out.back())) out.pop_back();
+            return out;
+        };
+
+        // CREATE GRAPH <name>
+        if (action == "CREATE" && tokens.size() >= 3) {
+            graph.createGraph(cleanName(tokens[2].value));
         }
-        else if (action == "DELETE" && tokens.size() == 3) {
-            graph.deleteGraph(tokens[2].value);
+        // GRAPH IMPORT <graph> FROM <table> COLUMN <col>
+        else if (action == "IMPORT") {
+            // Syntax check: GRAPH IMPORT G1 FROM Cities COLUMN Name
+            // Tokens: 0=GRAPH, 1=IMPORT, 2=G1, 3=FROM, 4=Cities, 5=COLUMN, 6=Name
+            if (tokens.size() < 7 || 
+                Helper::toUpper(tokens[3].value) != "FROM" ||
+                Helper::toUpper(tokens[5].value) != "COLUMN") {
+                Helper::printError("Syntax: GRAPH IMPORT <graph> FROM <table> COLUMN <col>");
+                return;
+            }
+            
+            string graphName = cleanName(tokens[2].value);
+            string tableName = tokens[4].value;
+            string colName = cleanName(tokens[6].value); // Clean col name too just in case
+
+            Graph* g = graph.getGraph(graphName);
+            if (!g) return; // Error printed by getGraph
+
+           auto rows = storage.selectAll(tableName);
+            auto columns = storage.getTableColumns(tableName);
+            
+            // Find Column Index
+            int colIndex = -1;
+            for(size_t i=0; i<columns.size(); i++) {
+                if(Helper::toUpper(columns[i].name) == Helper::toUpper(colName)) {
+                    colIndex = i;
+                    break;
+                }
+            }
+
+            if (colIndex == -1) {
+                Helper::printError("Column not found: " + colName);
+                return;
+            }
+
+            // Import
+            int count = 0;
+            for(auto& r : rows) {
+                string valStr;
+                // Convert to String for Vertex Name
+                if (holds_alternative<int>(r.fields[colIndex])) 
+                    valStr = to_string(get<int>(r.fields[colIndex]));
+                else if (holds_alternative<float>(r.fields[colIndex]))
+                    valStr = to_string(get<float>(r.fields[colIndex]));
+                else
+                    valStr = get<string>(r.fields[colIndex]);
+
+                g->addVertex(valStr);
+                count++;
+            }
+            Helper::printSuccess("Imported " + to_string(count) + " nodes into " + graphName);
         }
-        else if (action == "ADDVERTEX" && tokens.size() == 4) {
-            if (auto g = graph.getGraph(tokens[2].value))
-                g->addVertex(tokens[3].value);
+        // GRAPH ADDEDGE <graph> <uVal> <vVal> <weight>
+        else if (action == "ADDEDGE" && tokens.size() >= 6) {
+            if (auto g = graph.getGraph(cleanName(tokens[2].value)))
+                g->addEdge(tokens[3].value, cleanName(tokens[4].value), stoi(tokens[5].value), false);
         }
-        else if (action == "REMOVEVERTEX" && tokens.size() == 4) {
-            if (auto g = graph.getGraph(tokens[2].value))
-                g->removeVertex(tokens[3].value);
+        // GRAPH SHOW <graph>
+        else if (action == "SHOW" && tokens.size() >= 3) {
+            // Logic handled by GUI, but we print here for CLI
+            Helper::printSuccess("Opening Visualization for " + cleanName(tokens[2].value) + "...");
         }
-        else if (action == "ADDEDGE" && tokens.size() == 6) {
-            if (auto g = graph.getGraph(tokens[2].value))
-                g->addEdge(tokens[3].value, tokens[4].value, std::stoi(tokens[5].value), false);
-        }
-        else if (action == "PRINT" && tokens.size() == 3) {
-            if (auto g = graph.getGraph(tokens[2].value))
+        else if (action == "PRINT" && tokens.size() >= 3) {
+            if (auto g = graph.getGraph(cleanName(tokens[2].value)))
                 g->printGraph();
         }
-        else if (action == "BFS" && tokens.size() == 4) {
-            if (auto g = graph.getGraph(tokens[2].value))
-                g->bfs(tokens[3].value);
+        else if (action == "BFS" && tokens.size() >= 4) {
+            if (auto g = graph.getGraph(cleanName(tokens[2].value)))
+                g->bfs(cleanName(tokens[3].value));
         }
-        else if (action == "DFS" && tokens.size() == 4) {
-            if (auto g = graph.getGraph(tokens[2].value))
-                g->dfs(tokens[3].value);
+        else if (action == "DFS" && tokens.size() >= 4) {
+             if (auto g = graph.getGraph(cleanName(tokens[2].value)))
+                g->dfs(cleanName(tokens[3].value));
         }
-        else if (action == "DIJKSTRA" && tokens.size() == 5) {
-            if (auto g = graph.getGraph(tokens[2].value))
-                g->dijkstra(tokens[3].value, tokens[4].value);
+        else if (action == "DIJKSTRA" && tokens.size() >= 5) {
+            if (auto g = graph.getGraph(cleanName(tokens[2].value)))
+                g->dijkstra(tokens[3].value, cleanName(tokens[4].value));
         }
         else {
-            Helper::printError("Invalid GRAPH command.");
+            Helper::printError("Unknown GRAPH command.");
         }
     }
-
 }

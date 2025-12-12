@@ -1,2 +1,2 @@
-table=BenchHash_10000
+table=BenchHash_100000
 columns=id:INT,val:STRING

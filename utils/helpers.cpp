@@ -12,7 +12,7 @@ namespace Helper {
 
     // Capture Buffer
     static bool isCapturing = false;
-    static std::stringstream captureBuffer;
+    static stringstream captureBuffer;
 
     void startCapture() {
         isCapturing = true;
@@ -100,10 +100,10 @@ namespace Helper {
     }
 
     // --- Pretty table printing for SELECT ---
-    void printTable(const std::vector<std::vector<std::variant<int, float, std::string>>>& rows,const std::vector<std::string>& headers) {
+    void printTable(const vector<vector<variant<int, float, string>>>& rows,const vector<string>& headers) {
         if (headers.empty()) return;
         
-        std::vector<size_t> widths(headers.size(), 0);
+        vector<size_t> widths(headers.size(), 0);
 
         // 1. Calculate column widths based on headers
         for (size_t i = 0; i < headers.size(); i++)
@@ -112,12 +112,12 @@ namespace Helper {
         // 2. Calculate column widths based on data
         for (const auto& row : rows) {
             for (size_t i = 0; i < row.size(); i++) {
-                std::string val = std::visit([](auto&& v) -> std::string {
-                    std::ostringstream oss;
+                string val = visit([](auto&& v) -> string {
+                    ostringstream oss;
                     oss << v;
                     return oss.str();
                 }, row[i]);
-                widths[i] = std::max(widths[i], val.size());
+                widths[i] = max(widths[i], val.size());
             }
         }
 
@@ -135,7 +135,7 @@ namespace Helper {
         stringstream headerLine;
         headerLine << "|";
         for (size_t i = 0; i < headers.size(); i++)
-            headerLine << " " << std::setw(widths[i]) << headers[i] << " |";
+            headerLine << " " << setw(widths[i]) << headers[i] << " |";
         println(headerLine.str());
 
         println(makeLine('-'));
@@ -145,12 +145,12 @@ namespace Helper {
             stringstream rowLine;
             rowLine << "|";
             for (size_t i = 0; i < row.size(); i++) {
-                std::string val = std::visit([](auto&& v) -> std::string {
-                    std::ostringstream oss;
+                string val = visit([](auto&& v) -> string {
+                    ostringstream oss;
                     oss << v;
                     return oss.str();
                 }, row[i]);
-                rowLine << " " << std::setw(widths[i]) << val << " |";
+                rowLine << " " << setw(widths[i]) << val << " |";
             }
             println(rowLine.str());
         }

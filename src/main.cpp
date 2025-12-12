@@ -5,6 +5,7 @@
 #include "../graph/graph.h"
 #include "../utils/helpers.h"
 
+using namespace std;
 using namespace ChronoDB;
 
 int main() {
@@ -12,28 +13,28 @@ int main() {
     GraphEngine graph;
     Parser parser(storage, graph);
 
-    std::string inputLine;
-    std::string commandBuffer;
+    string inputLine;
+    string commandBuffer;
 
-    std::cout << "=== ChronoDB SQL CLI ===" << std::endl;
-    std::cout << "Type 'EXIT' to quit." << std::endl;
+    cout << "=== ChronoDB SQL CLI ===" << endl;
+    cout << "Type 'EXIT' to quit." << endl;
 
     while (true) {
         if (commandBuffer.empty())
-            std::cout << "ChronoDB> ";
+            cout << "ChronoDB> ";
         else
-            std::cout << "....> ";
+            cout << "....> ";
 
-        std::getline(std::cin, inputLine);
+        getline(cin, inputLine);
 
         if (inputLine.empty()) continue;
 
         // Check for EXIT (case-insensitive)
-        std::string inputUpper = Helper::toUpper(inputLine);
+        string inputUpper = Helper::toUpper(inputLine);
         
         // Basic trim logic
         size_t last = inputLine.find_last_not_of(" \t\r\n");
-        if (last == std::string::npos) continue; // Empty line
+        if (last == string::npos) continue; // Empty line
         
         // Remove trailing whitespace from the VIEW of the line for checking ';'
         char lastChar = inputLine[last];
