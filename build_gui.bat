@@ -1,7 +1,8 @@
 @echo off
 echo Compiling ChronoDB GUI...
 
-g++ -std=c++17 -o chronodb_gui.exe -I. -I "raylib-5.5_win64_mingw-w64/include" -L "raylib-5.5_win64_mingw-w64/lib" src/gui.cpp query/lexer.cpp query/parser.cpp storage/storage.cpp graph/graph.cpp utils/helpers.cpp utils/sorting.cpp -lraylib -lgdi32 -lwinmm
+
+g++ -std=c++17 -o chronodb_gui.exe -I. -I "C:/raylib/raylib/src" -I "C:/raylib/include" -L "C:/raylib/raylib/src" src/gui.cpp query/lexer.cpp query/parser.cpp storage/storage.cpp graph/graph.cpp utils/helpers.cpp utils/sorting.cpp -lraylib -lgdi32 -lwinmm
 
 if %ERRORLEVEL% EQU 0 (
     echo.
